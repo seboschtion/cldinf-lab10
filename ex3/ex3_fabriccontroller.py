@@ -21,7 +21,7 @@ class Ex3FabricController(Ex3ControllerBase):
         match = ev.msg.match
 
         # create actions and update match
-        mac_learning_action = self.mac_learning(dpid, data, ofproto, parser, match)
+        mac_learning_action = self._mac_learning(dpid, data, ofproto, parser, match)
 
         # add flow
         actions = [mac_learning_action]
@@ -32,7 +32,7 @@ class Ex3FabricController(Ex3ControllerBase):
                                   in_port=ev.msg.match['in_port'], actions=actions, data=data)
         dp.send_msg(out)
 
-    def mac_learning(self, dpid, data, ofproto, parser, match):
+    def _mac_learning(self, dpid, data, ofproto, parser, match):
         pkt = packet.Packet(data)
         eth_pkt = pkt.get_protocol(ethernet.ethernet)
         src = eth_pkt.src
