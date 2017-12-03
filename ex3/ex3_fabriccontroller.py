@@ -1,6 +1,6 @@
 from ex3_controllerbase import Ex3ControllerBase
 from ryu.controller import ofp_event
-from ryu.controller.handler import HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER
+from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
@@ -11,13 +11,15 @@ class Ex3FabricController(Ex3ControllerBase):
         self.mac_tables = {}
         self.switch_ports = range(1, 10)
         self.host_ports = range(10, 21)
+        self.leaf_switch_ids = range(1, 1000)
+        self.spine_switch_ids = range(1000, 2000)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         dp = ev.msg.datapath
         dpid = dp.id
-        ofproto = ev.msg.datapath.ofproto
-        parser = ev.msg.datapath.ofproto_parser
+        ofproto = dp.ofproto
+        parser = dp.ofproto_parser
         data = ev.msg.data
         match = ev.msg.match
 
@@ -53,15 +55,12 @@ class Ex3FabricController(Ex3ControllerBase):
         elif in_port in self.switch_ports:
             out_ports = self.host_ports
 
-        self.logger.info("### out_ports for %s: %s", dpid, out_ports)
-
         # create actions
         actions = []
         for out_port in out_ports:
-            self.logger.info("### switch %s will send packets through port %s", dpid, out_port)
             actions.append(parser.OFPActionOutput(out_port))
 
         return actions
 
     def __is_spine(self, dpid):
-        return dpid > 1000
+        return dpid in self.spine_switch_ids
