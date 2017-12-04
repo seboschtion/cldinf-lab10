@@ -33,7 +33,7 @@ class Ex3FabricController(Ex3ControllerBase):
 
         # send packet
         out = parser.OFPPacketOut(datapath=dp, buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ev.msg.match['in_port'], actions=actions, data=data)
+                in_port=ev.msg.match['in_port'], actions=actions, data=data)
         dp.send_msg(out)
 
     def _flow_creation(self, dpid, ofproto, data, parser, match):
