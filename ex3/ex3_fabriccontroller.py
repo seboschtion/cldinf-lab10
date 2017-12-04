@@ -9,6 +9,8 @@ class Ex3FabricController(Ex3ControllerBase):
     def __init__(self, *args, **kwargs):
         super(Ex3FabricController, self).__init__(*args, **kwargs)
         self.mac_tables = {}
+
+        # variables for easy topology adaptions
         self.switch_ports = range(1, 10)
         self.host_ports = range(10, 21)
         self.leaf_switch_ids = range(1, 1000)
@@ -24,17 +26,18 @@ class Ex3FabricController(Ex3ControllerBase):
         match = ev.msg.match
 
         # create actions and update match
-        mac_learning_actions = self._mac_learning(dpid, ofproto, data, parser, match)
+        actions = self._flow_creation(dpid, ofproto, data, parser, match)
 
         # add flow
-        self.add_flow(ev.msg.datapath, match, mac_learning_actions)
+        self.add_flow(dp, match, actions)
 
         # send packet
         out = parser.OFPPacketOut(datapath=dp, buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ev.msg.match['in_port'], actions=mac_learning_actions, data=data)
+                                  in_port=ev.msg.match['in_port'], actions=actions, data=data)
         dp.send_msg(out)
 
-    def _mac_learning(self, dpid, ofproto, data, parser, match):
+    def _flow_creation(self, dpid, ofproto, data, parser, match):
+        # unpack packet
         pkt = packet.Packet(data)
         eth_pkt = pkt.get_protocol(ethernet.ethernet)
 
@@ -46,18 +49,25 @@ class Ex3FabricController(Ex3ControllerBase):
         # get out_ports
         out_ports = set()
         if self.__is_spine(dpid):
+            # flood if spine
             out_ports.add(ofproto.OFPP_FLOOD)
         elif eth_pkt.dst in self.mac_tables[dpid]:
+            # if address is known:
+            #  - change match
+            #  - set known port as out_port
             match.set_eth_dst(eth_pkt.dst)
             out_ports.add(self.mac_tables[dpid][eth_pkt.dst])
         elif in_port in self.host_ports:
+            # flood if from host
             out_ports.add(ofproto.OFPP_FLOOD)
         elif in_port in self.switch_ports:
+            # flood only to host ports
             out_ports = self.host_ports
 
-        # create actions
+        # create action for every out_port
         actions = []
         for out_port in out_ports:
+            self.logger.info(" # add flow for switch %s: out_port is %s when in_port is %s", dpid, out_port, match['in_port'])
             actions.append(parser.OFPActionOutput(out_port))
 
         return actions

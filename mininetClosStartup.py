@@ -44,7 +44,7 @@ class Clos(Topo):
             for leaf_link in LEAFS:
                 self.net.addLink(spine_link, leaf_link, port1=switch_port_number, port2=switch_port_number + i)
                 switch_port_number += 1
-                i += 1
+            i += 1
 
         self.controller.start()
         self.net.start()
